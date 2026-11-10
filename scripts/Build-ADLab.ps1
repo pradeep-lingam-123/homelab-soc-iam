@@ -90,9 +90,10 @@ Write-Host "`n[Block 3] Creating user accounts..." -ForegroundColor Yellow
 
 $userPath = "OU=Users,OU=Corp,$domain"
 
-# Default password must meet domain complexity (8+ chars, upper/lower/num/sym).
-# Users are forced to change it at first logon.
-$defaultPassword = ConvertTo-SecureString "ChangeMe#2026!" -AsPlainText -Force
+# The initial password is typed in at run time, so it is never stored in the
+# script or the repo. It must meet the domain password policy, and users are
+# forced to change it at first logon.
+$defaultPassword = Read-Host "Initial password for new lab users" -AsSecureString
 
 function New-LabUser {
     param(

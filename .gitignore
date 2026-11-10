@@ -8,3 +8,11 @@ VMS/
 # OS junk
 Thumbs.db
 .DS_Store
+
+# Attack artefacts from Phase 4 (cracked hashes, wordlists)
+*.hashes
+lab-wordlist.txt
+
+# Large raw Wazuh exports (the write-ups and derived lists are kept)
+checks*.csv
+vulns-*.csv

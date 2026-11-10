@@ -40,6 +40,8 @@ pfSense firewall  ── WAN: NAT ──→ internet
 - [x] **Phase 1 — Network Backbone** (pfSense firewall, segmentation, DHCP)
 - [x] **Phase 2 — Active Directory & IAM hardening**
 - [x] **Phase 3 — SIEM / Detection** (Wazuh)
+- [x] **CIS Benchmark hardening** (DC01 raised from 28% to 60%)
+- [ ] **Vulnerability management** (scan, triage, patch and verify, in progress)
 - [ ] Phase 4 — Adversary simulation (Kali → Kerberoasting → detection)
 - [ ] Phase 5 — Embedded / TPM tie-in (swtpm, links to fTPM research)
 
@@ -112,6 +114,11 @@ Attempting to provision a service account with a non-compliant password was
 actively enforced rather than merely configured.
 See [`Docs/control-validation.md`](Docs/control-validation.md).
 
+**Update, November 2026:** the CIS scan later showed the 14-character policy was
+no longer in force. The Default Domain Policy GPO had silently overwritten the
+values the script set on the domain. The policy is now set in the GPO itself and
+confirmed by a rescan. See [CIS Benchmark hardening](#cis-benchmark-hardening).
+
 ### Intentional weakness (for Phase 4)
 A service account `svc-sql` was created with a Service Principal Name
 (`MSSQLSvc/dc01.lab.local:1433`), making it **Kerberoastable** — a deliberate,
@@ -155,6 +162,46 @@ test logon.
 
 ---
 
+## CIS Benchmark hardening
+
+**Benchmark:** CIS Microsoft Windows Server 2022 Benchmark v2.0.0, assessed on
+DC01 with Wazuh configuration assessment (SCA).
+
+| Stage | Passed | Failed | Score |
+|-------|--------|--------|-------|
+| Baseline | 102 | 257 | 28% |
+| After `CIS-Harden-DC01.ps1` | 210 | 149 | 58% |
+| After fixing the policy at GPO level | 217 | 142 | 60% |
+
+The script applies 110 settings, each tagged with its CIS ID, and logs every
+change to `applied-settings.csv`. Settings that would break the lab, such as
+AES-only Kerberos before the Phase 4 exercise, are left out with a documented
+reason. Full write-up, exceptions and rollback steps:
+[`cis-hardening/cis-hardening.md`](cis-hardening/cis-hardening.md).
+
+---
+
+## Vulnerability management
+
+DC01 had never been patched since its March 2022 build (20348.587). Wazuh
+vulnerability detection found **1,753 CVEs**. Cross-referencing them with CISA's
+Known Exploited Vulnerabilities catalogue flagged **83 as actively exploited**,
+17 of them used in ransomware campaigns. Matching findings to the roles DC01
+actually runs put 260 out of scope, leaving 1,493 to prioritise by exploitation,
+exposure and severity.
+
+| Severity | Before | After patching |
+|----------|--------|----------------|
+| Critical | 30 | in progress |
+| High | 1,240 | in progress |
+| On CISA KEV | 83 | in progress |
+
+Report and prioritised findings:
+[`vulnerability-triage/vulnerability-report.md`](vulnerability-triage/vulnerability-report.md).
+Monthly Patch Tuesday tracking: [`patch-log.md`](patch-log.md).
+
+---
+
 ## Phase 4 — Adversary Simulation *(planned)*
 Kali attacker on `labnet`; Kerberoast `svc-sql`, crack the ticket offline,
 then detect the attack in Wazuh via event **4769**. Each attack paired with its
@@ -170,9 +217,13 @@ RSS-based physical-layer-security / fTPM dissertation research.
 ```
 homelab-soc-iam/
 ├── README.md
+├── patch-log.md               # monthly Patch Tuesday tracking
 ├── scripts/
 │   ├── Build-ADLab.ps1        # OUs, groups, users
-│   └── Harden-ADLab.ps1       # password/audit policy, legacy-protocol disable
+│   ├── Harden-ADLab.ps1       # password/audit policy, legacy-protocol disable
+│   └── Create-WeakAccount.ps1 # deliberately Kerberoastable svc-sql
+├── cis-hardening/             # CIS script, results, GPO backup
+├── vulnerability-triage/      # report, KEV matches, hotfix lists
 ├── Docs/
 │   └── control-validation.md  # password-policy negative test
 └── Screenshots/               # verification evidence per phase
@@ -180,8 +231,8 @@ homelab-soc-iam/
 
 ## Notes
 - VM disk images (`*.vdi`, `*.iso`) are excluded via `.gitignore`.
+- Raw Wazuh exports are kept out of the repo. Write-ups and derived lists are published.
+- Lab passwords are typed in at run time. The one exception is the deliberately
+  weak `svc-sql` password, which is the Phase 4 target.
 - Screenshots are scrubbed of sensitive/real-network data.
 - Lab IPs (`192.168.10.0/24`) are private and non-routable.
-
-**CIS hardening:** applied CIS Benchmark baseline controls to the DC
-  via `cis-hardening/<cis-hardening.md>` — see header for benchmark version/level

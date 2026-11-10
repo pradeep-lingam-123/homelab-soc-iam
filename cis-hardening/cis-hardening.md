@@ -7,15 +7,16 @@ Assessment of the lab domain controller against the **CIS Microsoft Windows Serv
 | Scan | Passed | Failed | Total | Score |
 | --- | --- | --- | --- | --- |
 | Baseline (5 Nov 2026) | 102 | 257 | 359 | 28% |
-| After remediation (5 Nov 2026) | 210 | 149 | 359 | 58% |
+| After script (5 Nov 2026) | 210 | 149 | 359 | 58% |
+| After script and GPO account policy (5 Nov 2026) | 217 | 142 | 359 | 60% |
 
-108 previously failing checks now pass. Screenshot: `after-score.png`. Raw export: `checks.csv`. Applied settings log: `applied-settings.csv`.
+115 previously failing checks now pass. Screenshot: `after-score.png`. The raw Wazuh export is kept out of the repo. Applied settings log: `applied-settings.csv`.
 
 ## Key finding
 
 The baseline showed the domain's minimum password length below 14 characters, even though `Harden-ADLab.ps1` had set a 14-character minimum. The script changed the policy directly on the domain object, and the **Default Domain Policy** GPO reapplied its own values at the next policy refresh. The control looked configured but wasn't in force.
 
-**Fix:** set password and lockout policy inside the Default Domain Policy GPO, then confirm the effective values with `net accounts` and a rescan. Lesson: verify a control by measuring it, not by trusting the script that set it.
+**Fix:** set password and lockout policy inside the Default Domain Policy GPO (14-character minimum, 24-password history, 365-day maximum age, 1-day minimum age, lockout after 5 attempts for 15 minutes). `net accounts`, the GPO backup report and the rescan all confirm the values are now in force, and the 7 related checks pass. Lesson: verify a control by measuring it, not by trusting the script that set it.
 
 ## What was changed
 
